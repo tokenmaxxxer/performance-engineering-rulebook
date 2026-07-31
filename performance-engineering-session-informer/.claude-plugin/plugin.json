@@ -1,0 +1,7 @@
+{
+  "name": "performance-engineering-session-informer",
+  "description": "Non-blocking SessionStart awareness for performance-engineering: reports current issue/branch, existing PR/approval state, and whether this role's proposal/record file already exists for this issue; informational only, never gates.",
+  "author": {
+    "name": "Jung Jiwon & Lee Jongkwan"
+  }
+}

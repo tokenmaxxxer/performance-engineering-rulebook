@@ -7,7 +7,32 @@
     {
       "name": "performance-engineering",
       "source": "./performance-engineering",
-      "description": "The performance-engineering role on contract v3 (issue-160 round-3 promotion). Decides: 부하/지연 목표를 만족하는가."
+      "description": "The performance-engineering role's identity + SessionStart orientation only (contract v3, issue-160 round-3 promotion). Decides: 부하/지연 목표를 만족하는가. Per-facet enforcement lives in the sibling performance-engineering-* plugins below."
+    },
+    {
+      "name": "performance-engineering-proposal-gate",
+      "source": "./performance-engineering-proposal-gate",
+      "description": "Gates phase-1 performance-engineering proposals on the 6 methodology.md (a) facets (numeric SLO, falsifiable hypothesis, named method+reason, workload characterization, premortem, evidence-citation format); does not touch phase-2 records."
+    },
+    {
+      "name": "performance-engineering-record-gate",
+      "source": "./performance-engineering-record-gate",
+      "description": "Gates phase-2 performance-engineering records on the 7 methodology.md (b) elements (methodology-cite, repro info, workload-actual, percentile evidence, bottleneck-evidence linkage, exit-criteria verdict, hand-off rationale), with graceful-exit recognition; does not touch phase-1 proposals."
+    },
+    {
+      "name": "performance-engineering-order-check",
+      "source": "./performance-engineering-order-check",
+      "description": "Enforces performance-engineering's intra-document section-order constraint (workload characterization before percentile evidence, and its phase-1 equivalent) within a single proposal or record; shared machinery applied to both documents, not a facet-presence check itself."
+    },
+    {
+      "name": "performance-engineering-checklist",
+      "source": "./performance-engineering-checklist",
+      "description": "The performance-engineering role's phase-1 and phase-2 human-facing authoring checklists, as literal reference material — no gate, no hook."
+    },
+    {
+      "name": "performance-engineering-session-informer",
+      "source": "./performance-engineering-session-informer",
+      "description": "Non-blocking SessionStart awareness for performance-engineering: issue/branch, existing PR/approval state, whether this role's proposal/record already exists. Informational only, never gates."
     }
   ]
 }

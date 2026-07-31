@@ -1,0 +1,7 @@
+{
+  "name": "performance-engineering-checklist",
+  "description": "Phase-1 and phase-2 human-facing authoring checklists for the performance-engineering role (SLO/hypothesis/method/workload/premortem; methodology-cite/repro/workload-actual/percentile-evidence/bottleneck-link/exit-criteria-verdict/hand-off), restated from methodology.md (a)/(b) as a reading aid; reference material only, no gate or hook.",
+  "author": {
+    "name": "Jung Jiwon & Lee Jongkwan"
+  }
+}

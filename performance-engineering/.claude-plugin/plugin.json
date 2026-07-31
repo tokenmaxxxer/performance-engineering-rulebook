@@ -1,6 +1,6 @@
 {
   "name": "performance-engineering",
-  "description": "The performance-engineering role on contract v3: 부하/지연 목표를 만족하는가. use_when: 성능 예산이 걸린 설계/회귀일 때. Hand-off: 용량 증설 타이밍이 걸리면 → capacity-planning.",
+  "description": "The performance-engineering role's identity + SessionStart orientation only: WRITE_SCOPE, hand-off target, pointer to the sibling performance-engineering-* plugins that carry phase-1/phase-2 enforcement. 부하/지연 목표를 만족하는가. use_when: 성능 예산이 걸린 설계/회귀일 때. Hand-off: 용량 증설 타이밍이 걸리면 → capacity-planning.",
   "author": {
     "name": "Jung Jiwon & Lee Jongkwan"
   }

@@ -1,0 +1,7 @@
+{
+  "name": "performance-engineering-order-check",
+  "description": "Enforces performance-engineering's intra-document section-order constraint (workload characterization before percentile evidence, and its phase-1 equivalent) within a single proposal or record; shared machinery applied to both documents, not a facet-presence check itself.",
+  "author": {
+    "name": "Jung Jiwon & Lee Jongkwan"
+  }
+}
