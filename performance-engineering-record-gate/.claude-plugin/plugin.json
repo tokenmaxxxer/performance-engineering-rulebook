@@ -1,0 +1,7 @@
+{
+  "name": "performance-engineering-record-gate",
+  "description": "Gates phase-2 performance-engineering records on the 7 methodology.md (b) elements (methodology-cite, repro info, workload-actual, percentile evidence, bottleneck-evidence linkage, exit-criteria verdict, hand-off rationale), with graceful-exit recognition; does not touch phase-1 proposals.",
+  "author": {
+    "name": "Jung Jiwon & Lee Jongkwan"
+  }
+}

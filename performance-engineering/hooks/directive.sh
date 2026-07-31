@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# SessionStart: performance-engineering's role directive — how this role fills
-# the core lifecycle. core's directive carries the protocol; this carries the
-# role. Kill switch: export PERFORMANCE_ENGINEERING_CYCLE_OFF=1
+# SessionStart: performance-engineering's role identity + hand-off only.
+# Per-facet phase-1/phase-2 enforcement text lives in the
+# performance-engineering-proposal-gate / performance-engineering-record-gate
+# plugins, not here — this plugin is identity/orientation only, per the
+# issue-10 plugin-set restructure. Kill switch: export PERFORMANCE_ENGINEERING_CYCLE_OFF=1
 . "${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks/lib/role-directive.sh"
 
 you_decide="YOU DECIDE: 부하/지연 목표를 만족하는가"
 
 use_when="USE_WHEN: 성능 예산이 걸린 설계/회귀일 때"
 
-produces=$'PRODUCES (required record fields): performance budget (numeric SLO, e.g. p99 latency < Xms), profiling evidence (USE+RED signals, percentile-based: p50/p95/p99), bottleneck list (evidence-linked)\n\nWRITE_SCOPE: [] (report-only role — no code/doc write outside the record itself)'
+produces=$'PRODUCES: see performance-engineering-proposal-gate (phase-1 norm) and\nperformance-engineering-record-gate (phase-2 norm) for the enforced\nfield/facet lists; performance-engineering-checklist for the human-facing\nauthoring checklist.\n\nWRITE_SCOPE: [] (report-only role — no code/doc write outside the record itself)'
 
 hand_off="HAND-OFF: 용량 증설 타이밍이 걸리면 → capacity-planning"
 

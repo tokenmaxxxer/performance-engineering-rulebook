@@ -1,0 +1,7 @@
+{
+  "name": "performance-engineering-proposal-gate",
+  "description": "Gates phase-1 performance-engineering proposals on the 6 methodology.md (a) facets (numeric SLO, falsifiable hypothesis, named method+reason, workload characterization, premortem, evidence-citation format); does not touch phase-2 records.",
+  "author": {
+    "name": "Jung Jiwon & Lee Jongkwan"
+  }
+}
