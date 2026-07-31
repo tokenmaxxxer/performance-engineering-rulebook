@@ -8,7 +8,7 @@ you_decide="YOU DECIDE: 부하/지연 목표를 만족하는가"
 
 use_when="USE_WHEN: 성능 예산이 걸린 설계/회귀일 때"
 
-produces=$'PRODUCES (required record fields): performance budget, profiling evidence, bottleneck list\n\nWRITE_SCOPE: [] (report-only role — no code/doc write outside the record itself)'
+produces=$'PRODUCES (required record fields): performance budget (numeric SLO, e.g. p99 latency < Xms), profiling evidence (USE+RED signals, percentile-based: p50/p95/p99), bottleneck list (evidence-linked)\n\nWRITE_SCOPE: [] (report-only role — no code/doc write outside the record itself)'
 
 hand_off="HAND-OFF: 용량 증설 타이밍이 걸리면 → capacity-planning"
 
