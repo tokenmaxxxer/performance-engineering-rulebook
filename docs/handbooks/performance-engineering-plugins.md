@@ -1,14 +1,21 @@
 # Handbook: performance-engineering plugin set
 
 Operational reference for the 6 plugins that implement this role's
-methodology enforcement (issue-10), gate-A+-remediated in issue-13. See
+methodology enforcement (issue-10), gate-A+-remediated in issue-13 and
+re-audit-closed out in issue-16. See
 `docs/issue-10/proposals/methodology-enforcement.md` for the original
 design rationale, `docs/issue-10/reports/performance-engineering.md` for
-what was originally built, and
+what was originally built,
 `docs/issue-13/proposals/gate-a-plus-remediation.md` +
 `docs/issue-13/reports/performance-engineering.md` for the gate-house
 migration (core `gate-lib.sh`/`gate-lib.py` adoption, section-scoped
-semantic checks) and what was actually built for it.
+semantic checks), and
+`docs/issue-16/proposals/gate-a-plus-final-remediation.md` +
+`docs/issue-16/reports/performance-engineering.md` for the re-audit
+closeout (hooks.json matcher/coverage parity, core-#75's guarded
+gate-lib.sh source, word-boundary/negation-aware section_lib.py
+substring checks, `gate_lib.gate_bash_write_targets` referenced instead
+of duplicated).
 
 ## `core` plugin dependency (issue-13)
 
@@ -16,7 +23,14 @@ semantic checks) and what was actually built for it.
 and `performance-engineering-order-check` all source
 `core/hooks/lib/gate-lib.sh` (bash) and load `core/hooks/lib/gate-lib.py`
 (Python, via `importlib`) by reference — never vendored, per
-`docs/handbooks/canon-scripts.md` (`tokenmaxxxer-core`). Resolved via
+`docs/handbooks/canon-scripts.md` (`tokenmaxxxer-core`). Per issue-16, all
+three gates' source line is `||`-guarded
+(`. ".../gate-lib.sh" || { echo "...: cannot source gate-lib.sh" >&2; exit 2; }`,
+core-#75's confirmed shape) so a missing/unreachable core fails closed
+(deny) instead of silently letting every downstream `gate_kill_switch_active`
+call misread the missing function as kill-switch-off; all three also call
+`gate_lib.gate_bash_write_targets(cmd)` for Bash-write token scanning
+instead of duplicating the regex inline. Resolved via
 `${CLAUDE_PLUGIN_ROOT_CORE:-<repo-root>/../../core}` at runtime, the same
 convention `performance-engineering/hooks/directive.sh` already uses for
 `role-directive.sh`. Requires the `tokenmaxxxer-core` marketplace/plugin

@@ -35,7 +35,7 @@ PROP=docs/issue-10/proposals/methodology-enforcement.md
 
 SLO='p99 < 250ms'
 HYP='hypothesis: connection pool saturates at high rps, grounded in existing telemetry'
-METHOD='method: use method chosen to decide whether the load/latency judgment is satisfied'
+METHOD='method: USE Method chosen to decide whether the load/latency judgment is satisfied'
 WORKLOAD='workload characterization: 200 concurrent users, 80/20 read/write transaction mix, 5-minute ramp-up'
 PREMORTEM='premortem: blast radius limited to canary pool, killswitch env flag, rollback via previous deploy'
 EVIDENCE='source: https://example.com/bench'
@@ -159,6 +159,35 @@ payload="$(bash_payload "cat > $PROP <<EOF
 some content
 EOF")"
 run_payload deny bash-write-undeterminable-denies "$payload"
+
+# 7. missing-core: CLAUDE_PLUGIN_ROOT_CORE pointed nowhere must deny
+# (issue-75-shaped fail-open guard), not silently allow.
+newtd; mkdir -p "$td/$(dirname "$PROP")"
+payload="$(write_payload "$PROP" "$(without_slo)")"
+run_payload deny missing-core-denies "$payload" env CLAUDE_PLUGIN_ROOT_CORE="$td/no-such-core"
+
+# --- issue-16 §2.3 substring-hardening regression cases ---
+
+# "uncited" must no longer satisfy the citation facet (own-negation false pass).
+uncited_only() {
+  printf '## SLO\n%s\n## Hypothesis\n%s\n## Method\n%s\n## Workload Characterization\n%s\n## Premortem\n%s\n## Citation\nthis figure is uncited\n' \
+    "$SLO" "$HYP" "$METHOD" "$WORKLOAD" "$PREMORTEM"
+}
+run deny  uncited-decoy-denies "$PROP" "$(uncited_only)"
+
+# "not cited" must no longer satisfy the citation facet (negation window).
+not_cited_only() {
+  printf '## SLO\n%s\n## Hypothesis\n%s\n## Method\n%s\n## Workload Characterization\n%s\n## Premortem\n%s\n## Citation\nthis figure is not cited anywhere\n' \
+    "$SLO" "$HYP" "$METHOD" "$WORKLOAD" "$PREMORTEM"
+}
+run deny  not-cited-decoy-denies "$PROP" "$(not_cited_only)"
+
+# lower-case "use methodology X" must no longer satisfy the method-name facet.
+use_methodology_decoy() {
+  printf '## SLO\n%s\n## Hypothesis\n%s\n## Method\nwe use methodology X to decide\ndecide judgement here\n## Workload Characterization\n%s\n## Premortem\n%s\n## Citation\n%s\n' \
+    "$SLO" "$HYP" "$WORKLOAD" "$PREMORTEM" "$EVIDENCE"
+}
+run deny  use-methodology-decoy-denies "$PROP" "$(use_methodology_decoy)"
 
 printf '\n== %d passed, %d failed ==\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

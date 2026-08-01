@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 CORE_HOOKS="${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks"
-. "$CORE_HOOKS/lib/gate-lib.sh"
+. "$CORE_HOOKS/lib/gate-lib.sh" || { echo "record-gate.sh: cannot source gate-lib.sh" >&2; exit 2; }
 gate_trap_fail_closed
 set -uo pipefail
 # PreToolUse gate (Write|Edit|MultiEdit|NotebookEdit|Bash) — performance-engineering
@@ -102,7 +102,7 @@ try:
         if not (isinstance(cmd, str) and cmd):
             sys.exit(0)
         hit = None
-        for tok in re.findall(r'[A-Za-z0-9_./~$-]+', cmd):
+        for tok in gate_lib.gate_bash_write_targets(cmd):
             rel = gate_lib.gate_normalize_path(root, tok)
             if rel is not None and RECORD_RE.match(rel):
                 hit = rel
@@ -170,7 +170,8 @@ try:
     # scoped to the method section (shared group with proposal-gate).
     method_group = vocab.get("method", [])
     cite_re = re.compile(r'\d')
-    if not (section_lib.section_has_any(sections, method_group, "use method", "red method", "golden signal")
+    if not ((section_lib.section_has_method_use(sections, method_group)
+             or section_lib.section_has_any(sections, method_group, "red method", "golden signal"))
             and section_lib.section_search(sections, method_group, cite_re)):
         missing.append("methodology-cite: which of USE/RED/Golden-Signals was actually applied, with per-signal measured values, inside the Method section (methodology.md (b)1)")
 

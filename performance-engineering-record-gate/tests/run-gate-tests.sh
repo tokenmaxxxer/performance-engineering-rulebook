@@ -148,5 +148,22 @@ some content
 EOF")"
 run_payload deny bash-write-undeterminable-denies "$payload"
 
+# 7. missing-core: CLAUDE_PLUGIN_ROOT_CORE pointed nowhere must deny
+# (issue-75-shaped fail-open guard), not silently allow.
+newtd; mkdir -p "$td/$(dirname "$REC")"
+payload="$(write_payload "$REC" "$(without_cite)")"
+run_payload deny missing-core-denies "$payload" env CLAUDE_PLUGIN_ROOT_CORE="$td/no-such-core"
+
+# --- issue-16 §2.3 substring-hardening regression case ---
+
+# lower-case "use methodology X" must no longer satisfy the method-name
+# facet (numeric per-signal value still present so only the method-name
+# half of the (b)1 check is exercised).
+use_methodology_decoy() {
+  printf '## Method\nwe use methodology X, saturation 92%%\n## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' \
+    "$REPRO" "$WORKLOAD" "$PCTL" "$BOTTLENECK" "$EXIT" "$HANDOFF"
+}
+run deny  use-methodology-decoy-denies "$REC" "$(use_methodology_decoy)"
+
 printf '\n== %d passed, %d failed ==\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

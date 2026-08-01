@@ -141,5 +141,11 @@ some content
 EOF")"
 run_payload deny bash-write-undeterminable-denies "$payload"
 
+# 7. missing-core: CLAUDE_PLUGIN_ROOT_CORE pointed nowhere must deny
+# (issue-75-shaped fail-open guard), not silently allow.
+newtd; mkdir -p "$td/$(dirname "$PROP")"
+payload="$(write_payload "$PROP" "$(out_of_order)")"
+run_payload deny missing-core-denies "$payload" env CLAUDE_PLUGIN_ROOT_CORE="$td/no-such-core"
+
 printf '\n== %d passed, %d failed ==\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
