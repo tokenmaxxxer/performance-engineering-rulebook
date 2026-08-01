@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 CORE_HOOKS="${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks"
-. "$CORE_HOOKS/lib/gate-lib.sh"
+. "$CORE_HOOKS/lib/gate-lib.sh" || { echo "order-check.sh: cannot source gate-lib.sh" >&2; exit 2; }
 gate_trap_fail_closed
 set -uo pipefail
 # PreToolUse gate (Write|Edit|MultiEdit|NotebookEdit|Bash) — performance-engineering
@@ -110,7 +110,7 @@ try:
         if not (isinstance(cmd, str) and cmd):
             sys.exit(0)
         hit = None
-        for tok in re.findall(r'[A-Za-z0-9_./~$-]+', cmd):
+        for tok in gate_lib.gate_bash_write_targets(cmd):
             rel = gate_lib.gate_normalize_path(root, tok)
             if rel is not None and is_write_surface(rel):
                 hit = rel

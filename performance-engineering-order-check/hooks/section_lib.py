@@ -67,6 +67,51 @@ def section_search(sections, group_phrases, pattern):
     return False
 
 
+# issue-16-confirmed: two facet needles used with section_has_any's bare
+# substring test are satisfied by their own negations/unrelated English
+# usage ("uncited"/"not cited" contain "cited"; "use methodology X"
+# contains "use method"). Word-boundary + negation-aware checks below are
+# used only for these two vulnerable needles — the other needles
+# ("assumption", "blast radius", "rollback", etc.) are not substrings of
+# their own negations or of unrelated common phrases the same way, so they
+# stay on section_has_any.
+
+_CITED_RE = re.compile(r'\bcited\b')
+_CITED_NEGATION_RE = re.compile(r"\b(not|never)\b|n't\b")
+_CITED_NEGATION_WINDOW = 20
+
+
+def section_has_cited(sections, group_phrases):
+    """True if any section whose heading matches group_phrases has a body
+    containing a non-negated, word-boundary "cited" (case-insensitive).
+    "uncited" never matches (no word boundary before "cited"); "not
+    cited"/"isn't cited"/"never cited" are excluded by a negation-token
+    scan of the text immediately preceding the match."""
+    for _, _, _, body in sections_matching_group(sections, group_phrases):
+        low = body.lower()
+        for m in _CITED_RE.finditer(low):
+            window = low[max(0, m.start() - _CITED_NEGATION_WINDOW):m.start()]
+            if _CITED_NEGATION_RE.search(window):
+                continue
+            return True
+    return False
+
+
+_USE_METHOD_RE = re.compile(r'\bUSE\b')
+
+
+def section_has_method_use(sections, group_phrases):
+    """True if any section whose heading matches group_phrases has a body
+    containing the literal acronym "USE" as a standalone word, checked
+    against the ORIGINAL-case body (not lower-cased) so "use methodology
+    X" no longer satisfies the facet while "USE Method"/"the USE method"
+    still do."""
+    for _, _, _, body in sections_matching_group(sections, group_phrases):
+        if _USE_METHOD_RE.search(body):
+            return True
+    return False
+
+
 def load_vocab_groups(vocab_text):
     """Parse heading-vocabulary.md's '## "<group>" group' / '- phrase'
     bullet-list format into {group_name_lower: [phrase_lower, ...]}. Single

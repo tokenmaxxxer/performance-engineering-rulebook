@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 CORE_HOOKS="${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks"
-. "$CORE_HOOKS/lib/gate-lib.sh"
+. "$CORE_HOOKS/lib/gate-lib.sh" || { echo "proposal-gate.sh: cannot source gate-lib.sh" >&2; exit 2; }
 gate_trap_fail_closed
 set -uo pipefail
 # PreToolUse gate (Write|Edit|MultiEdit|NotebookEdit|Bash) — performance-engineering
@@ -109,7 +109,7 @@ try:
         if not (isinstance(cmd, str) and cmd):
             sys.exit(0)
         hit = None
-        for tok in re.findall(r'[A-Za-z0-9_./~$-]+', cmd):
+        for tok in gate_lib.gate_bash_write_targets(cmd):
             rel = gate_lib.gate_normalize_path(root, tok)
             if rel is not None and PROPOSAL_RE.match(rel):
                 hit = rel
@@ -172,7 +172,8 @@ try:
     # (a)3 method named + tied to this role's YOU DECIDE line, scoped to the method
     # section, same-section co-occurrence only (no bare " use " substring).
     method_group = vocab.get("method", [])
-    method_named = section_lib.section_has_any(sections, method_group, "use method", "use+red", "red method", "golden signal", "four golden signals")
+    method_named = (section_lib.section_has_method_use(sections, method_group)
+                     or section_lib.section_has_any(sections, method_group, "use+red", "red method", "golden signal", "four golden signals"))
     method_decided = section_lib.section_has_any(sections, method_group, "decide", "judg")
     if not (method_named and method_decided):
         missing.append("method named explicitly (USE / RED / Four Golden Signals) with a sentence tying the choice to this role's YOU DECIDE line, both inside the Method section (methodology.md (a)3)")
@@ -193,7 +194,8 @@ try:
 
     # (a)6 evidence-citation format: source or explicit assumption label, scoped to the citation section.
     citation_group = vocab.get("citation", [])
-    if not section_lib.section_has_any(sections, citation_group, "source:", "assumption", "per ", "http://", "https://", "cited"):
+    if not (section_lib.section_has_any(sections, citation_group, "source:", "assumption", "per ", "http://", "https://")
+            or section_lib.section_has_cited(sections, citation_group)):
         missing.append("evidence-citation format: every external claim carries a source or is labeled an assumption, inside the citation/evidence section (methodology.md (a)6)")
 
     if missing:
