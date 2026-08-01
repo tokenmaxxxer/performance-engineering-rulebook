@@ -1,49 +1,52 @@
 #!/usr/bin/env bash
-__fc(){ rc=$?; if [ "$rc" != 0 ] && [ "$rc" != 2 ]; then echo "fail-closed: gate aborted (rc=$rc)" >&2; exit 2; fi; }
-trap __fc EXIT
-# PreToolUse gate (Write|Edit|MultiEdit) — performance-engineering
+CORE_HOOKS="${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks"
+. "$CORE_HOOKS/lib/gate-lib.sh"
+gate_trap_fail_closed
+set -uo pipefail
+# PreToolUse gate (Write|Edit|MultiEdit|NotebookEdit|Bash) — performance-engineering
 # intra-document section-order enforcement. Shared cross-cutting
 # machinery: fires on BOTH this role's write surfaces —
 # docs/issue-<n>/proposals/*.md (phase-1) and
 # docs/issue-<n>/reports/performance-engineering.md (phase-2) — unlike
 # proposal-gate/record-gate, which are surface-exclusive facet-presence
 # checks. This gate never checks facet presence itself; it only checks
-# that, when both a "workload" phrase and an "evidence" phrase are
-# present in the document, the workload one comes first. Absence of
-# either is not this gate's concern (that's proposal-gate/record-gate's
-# job).
+# that, when both a "workload"-group heading and an "evidence"-group
+# heading are present in the document, the workload one comes first (by
+# section start offset, not raw string position — a stray workload word
+# inside the evidence section's own prose no longer perturbs the verdict).
+# Absence of either is not this gate's concern (that's
+# proposal-gate/record-gate's job).
 #
-# Canonical heading vocabulary is loaded at runtime from
-# hooks/heading-vocabulary.md next to this script — two "## \"<group>\"
-# group" sections, each followed by "- phrase" bullet lines — so the
-# phrase list stays single-sourced in that file, never duplicated here.
+# Sources core's gate-lib.sh/gate-lib.py (issue-72 gate-house standard, by
+# reference) and this repo's own section_lib.py for the section-splitting
+# machinery. Canonical heading vocabulary is loaded at runtime from
+# hooks/heading-vocabulary.md next to this script — shared with
+# proposal-gate.sh/record-gate.sh, single-sourced, never duplicated here.
 #
 # Kill switch: export PERFORMANCE_ENGINEERING_ORDER_CHECK_OFF=1
-set -uo pipefail
-
+# (unrecognized values stay ACTIVE — see gate_kill_switch_active).
 role="performance-engineering"
-deny() { echo "${role}-order-check: refused — $1" >&2; exit 2; }
+gate_kill_switch_active "${PERFORMANCE_ENGINEERING_ORDER_CHECK_OFF:-}" || { trap - EXIT; exit 0; }
 
-case "${PERFORMANCE_ENGINEERING_ORDER_CHECK_OFF:-}" in
-  ""|0|false|no|off) ;;
-  *) exit 0 ;;
-esac
-
-command -v python3 >/dev/null 2>&1 || deny "order-check.sh requires python3, which is not on PATH; denying rather than guessing."
+command -v python3 >/dev/null 2>&1 || gate_deny "${role}-order-check" "requires python3, which is not on PATH; denying rather than guessing."
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+SECTION_LIB_PY="$SELF_DIR/section_lib.py"
 VOCAB_FILE="$SELF_DIR/heading-vocabulary.md"
-[ -f "$VOCAB_FILE" ] || deny "heading-vocabulary.md not found next to order-check.sh; cannot judge section order without the canonical phrase list."
+[ -f "$SECTION_LIB_PY" ] || gate_deny "${role}-order-check" "section_lib.py not found next to order-check.sh; cannot judge section order."
+[ -f "$VOCAB_FILE" ] || gate_deny "${role}-order-check" "heading-vocabulary.md not found next to order-check.sh; cannot judge section order without the canonical phrase list."
 
 payload="$(cat 2>/dev/null || true)"
-[ -n "$payload" ] || deny "empty tool-use payload on stdin; cannot evaluate the order-check gate."
+[ -n "$payload" ] || gate_deny "${role}-order-check" "empty tool-use payload on stdin; cannot evaluate the order-check gate."
 
 _target="$(printf '%s' "$payload" | python3 -c '
 import json,sys
 try: e=json.loads(sys.stdin.read())
 except Exception: sys.exit(0)
-ti=e.get("tool_input") if isinstance(e,dict) else None
-if isinstance(ti,dict):
+if not isinstance(e,dict): sys.exit(0)
+ti=e.get("tool_input")
+if not isinstance(ti,dict): sys.exit(0)
+if e.get("tool_name") in ("Write","Edit","MultiEdit","NotebookEdit"):
     v=ti.get("file_path")
     if isinstance(v,str) and v: print(v)
 ' 2>/dev/null || true)"
@@ -71,24 +74,24 @@ if [ -z "$root" ]; then
   root="$(git -C "$d" rev-parse --show-toplevel 2>/dev/null || true)"
 fi
 [ -z "$root" ] && root="$(git -C "$(pwd -P)" rev-parse --show-toplevel 2>/dev/null || true)"
-[ -z "$root" ] && deny "no project root could be determined; failing closed (order-check cannot run)."
+[ -z "$root" ] && gate_deny "${role}-order-check" "no project root could be determined; failing closed (order-check cannot run)."
 
-OC_PAYLOAD="$payload" OC_ROOT="$root" OC_VOCAB="$VOCAB_FILE" \
+OC_PAYLOAD="$payload" OC_ROOT="$root" SECTION_LIB_PY="$SECTION_LIB_PY" OC_VOCAB="$VOCAB_FILE" \
 python3 <<'PY'
 import sys as _fc_sys  # fail-closed-on-internal-error
 try:
-    import json, os, posixpath, re, sys
+    import json, os, posixpath, re, sys, importlib.util
 
     def deny(m):
         sys.stderr.write("performance-engineering-order-check: refused — %s\n" % m); sys.exit(2)
 
+    _gspec = importlib.util.spec_from_file_location("gate_lib", os.environ["GATE_LIB_PY"])
+    gate_lib = importlib.util.module_from_spec(_gspec); _gspec.loader.exec_module(gate_lib)
+    _sspec = importlib.util.spec_from_file_location("section_lib", os.environ["SECTION_LIB_PY"])
+    section_lib = importlib.util.module_from_spec(_sspec); _sspec.loader.exec_module(section_lib)
+
     raw = os.environ.get("OC_PAYLOAD", "")
-    try:
-        ev = json.loads(raw) if raw else {}
-    except ValueError:
-        deny("the tool-call payload is not valid JSON; the gate cannot judge section order on an unparseable write.")
-    if not isinstance(ev, dict):
-        deny("the tool-call payload is not a JSON object; failing closed on the order-check gate.")
+    ev = gate_lib.gate_parse_json_or_deny(raw, deny)
 
     tool = ev.get("tool_name")
     ti = ev.get("tool_input")
@@ -99,31 +102,39 @@ try:
     PROPOSAL_RE = re.compile(r'^docs/issue-[0-9]+/proposals/.*\.md$')
     RECORD_RE = re.compile(r'^docs/issue-[0-9]+/reports/performance-engineering\.md$')
 
-    def resolve(p):
-        n = p.replace("\\", "/")
-        a = n if posixpath.isabs(n) else posixpath.join(root, n)
-        a = posixpath.normpath(a)
-        try:
-            return posixpath.normpath(os.path.realpath(a).replace("\\", "/"))
-        except OSError:
-            return a
+    def is_write_surface(rel):
+        return bool(PROPOSAL_RE.match(rel) or RECORD_RE.match(rel))
 
-    path = None
-    if tool in ("Write", "Edit", "MultiEdit"):
-        p = ti.get("file_path")
-        if isinstance(p, str) and p:
-            path = p
-    if path is None:
+    if tool == "Bash":
+        cmd = ti.get("command", "")
+        if not (isinstance(cmd, str) and cmd):
+            sys.exit(0)
+        hit = None
+        for tok in re.findall(r'[A-Za-z0-9_./~$-]+', cmd):
+            rel = gate_lib.gate_normalize_path(root, tok)
+            if rel is not None and is_write_surface(rel):
+                hit = rel
+                break
+        if hit is None:
+            sys.exit(0)
+        deny(
+            "this Bash command appears to write to %s but the gate cannot determine "
+            "the resulting content from a shell command; failing closed the same way "
+            "an undeterminable Edit does. Use Write/Edit/MultiEdit so section order can "
+            "be checked." % hit
+        )
+
+    if tool not in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
         sys.exit(0)
 
-    r = resolve(path)
-    if not r.startswith(root + "/"):
+    p = ti.get("file_path")
+    if not (isinstance(p, str) and p):
         sys.exit(0)
-    rel = r[len(root):].lstrip("/")
-    if not (PROPOSAL_RE.match(rel) or RECORD_RE.match(rel)):
+    rel = gate_lib.gate_normalize_path(root, p)
+    if rel is None or not is_write_surface(rel):
         sys.exit(0)  # not this role's write surface — not this gate's business
 
-    # --- load canonical heading vocabulary from heading-vocabulary.md ---
+    # --- load canonical heading vocabulary, shared with proposal-gate/record-gate ---
     vocab_path = os.environ["OC_VOCAB"]
     try:
         with open(vocab_path, encoding="utf-8-sig") as fh:
@@ -131,27 +142,13 @@ try:
     except OSError:
         deny("heading-vocabulary.md could not be read; failing closed.")
 
-    groups = {}
-    current = None
-    heading_re = re.compile(r'^##\s*"([^"]+)"\s*group', re.IGNORECASE)
-    bullet_re = re.compile(r'^-\s+(.+?)\s*$')
-    for line in vocab_text.splitlines():
-        m = heading_re.match(line.strip())
-        if m:
-            current = m.group(1).strip().lower()
-            groups.setdefault(current, [])
-            continue
-        m = bullet_re.match(line)
-        if m and current is not None:
-            phrase = m.group(1).strip().lower()
-            if phrase:
-                groups[current].append(phrase)
-
-    workload_phrases = groups.get("workload", [])
-    evidence_phrases = groups.get("evidence", [])
-    if not workload_phrases or not evidence_phrases:
+    vocab = section_lib.load_vocab_groups(vocab_text)
+    workload_group = vocab.get("workload", [])
+    evidence_group = vocab.get("evidence", [])
+    if not workload_group or not evidence_group:
         deny("heading-vocabulary.md did not yield both a \"workload\" and an \"evidence\" phrase group; failing closed rather than checking order against an incomplete vocabulary.")
 
+    r = posixpath.join(root, rel)
     current = None
     if os.path.isfile(r):
         try:
@@ -160,31 +157,8 @@ try:
         except OSError:
             deny("%s exists but cannot be read; failing closed." % rel)
 
-    new_text = None
-    if tool == "Write":
-        c = ti.get("content")
-        if isinstance(c, str):
-            new_text = c
-    elif tool == "Edit":
-        o, n = ti.get("old_string"), ti.get("new_string")
-        if isinstance(o, str) and isinstance(n, str) and current is not None and o in current:
-            new_text = current.replace(o, n, 1)
-    elif tool == "MultiEdit":
-        edits = ti.get("edits")
-        text = current
-        if isinstance(edits, list) and text is not None:
-            ok = True
-            for e in edits:
-                if not isinstance(e, dict):
-                    ok = False; break
-                o, n = e.get("old_string"), e.get("new_string")
-                if not isinstance(o, str) or not isinstance(n, str) or o not in text:
-                    ok = False; break
-                text = text.replace(o, n, 1)
-            if ok:
-                new_text = text
-
-    if new_text is None:
+    new_text, ok = gate_lib.gate_reconstruct_write(tool, ti, current)
+    if not ok:
         deny(
             "this write targets %s but the gate cannot determine the resulting content "
             "from the tool input (tool=%r). Write the full document with Write, or use an "
@@ -192,18 +166,9 @@ try:
             "checked." % (rel, tool)
         )
 
-    low = new_text.lower()
-
-    def first_index(phrases):
-        best = None
-        for p in phrases:
-            i = low.find(p)
-            if i != -1 and (best is None or i < best):
-                best = i
-        return best
-
-    w_idx = first_index(workload_phrases)
-    e_idx = first_index(evidence_phrases)
+    sections = section_lib.split_sections(new_text)
+    w_idx = section_lib.first_group_start(sections, workload_group)
+    e_idx = section_lib.first_group_start(sections, evidence_group)
 
     if w_idx is None or e_idx is None:
         # presence is proposal-gate's/record-gate's job, not ours.

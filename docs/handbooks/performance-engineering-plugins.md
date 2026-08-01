@@ -1,10 +1,34 @@
 # Handbook: performance-engineering plugin set
 
 Operational reference for the 6 plugins that implement this role's
-methodology enforcement (issue-10). See
-`docs/issue-10/proposals/methodology-enforcement.md` for full design
-rationale and `docs/issue-10/reports/performance-engineering.md` for what
-was actually built.
+methodology enforcement (issue-10), gate-A+-remediated in issue-13. See
+`docs/issue-10/proposals/methodology-enforcement.md` for the original
+design rationale, `docs/issue-10/reports/performance-engineering.md` for
+what was originally built, and
+`docs/issue-13/proposals/gate-a-plus-remediation.md` +
+`docs/issue-13/reports/performance-engineering.md` for the gate-house
+migration (core `gate-lib.sh`/`gate-lib.py` adoption, section-scoped
+semantic checks) and what was actually built for it.
+
+## `core` plugin dependency (issue-13)
+
+`performance-engineering-proposal-gate`, `performance-engineering-record-gate`,
+and `performance-engineering-order-check` all source
+`core/hooks/lib/gate-lib.sh` (bash) and load `core/hooks/lib/gate-lib.py`
+(Python, via `importlib`) by reference — never vendored, per
+`docs/handbooks/canon-scripts.md` (`tokenmaxxxer-core`). Resolved via
+`${CLAUDE_PLUGIN_ROOT_CORE:-<repo-root>/../../core}` at runtime, the same
+convention `performance-engineering/hooks/directive.sh` already uses for
+`role-directive.sh`. Requires the `tokenmaxxxer-core` marketplace/plugin
+installed alongside this repo; the test suites below set
+`CLAUDE_PLUGIN_ROOT_CORE` directly to a local checkout.
+
+The same three gates also load
+`performance-engineering-order-check/hooks/section_lib.py` (private to
+this repo, not core canon) and the extended
+`performance-engineering-order-check/hooks/heading-vocabulary.md` to scope
+each facet/order check to the document section whose heading matches that
+facet's canonical group, instead of a whole-document substring search.
 
 ## Plugins and their kill switches
 
