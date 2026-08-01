@@ -1,39 +1,48 @@
 #!/usr/bin/env bash
-__fc(){ rc=$?; if [ "$rc" != 0 ] && [ "$rc" != 2 ]; then echo "fail-closed: gate aborted (rc=$rc)" >&2; exit 2; fi; }
-trap __fc EXIT
-# PreToolUse gate (Write|Edit|MultiEdit) — performance-engineering phase-2
-# record-norm, the 7 methodology.md (b) elements: methodology-cite, repro
-# info, workload-actual, percentile evidence, bottleneck-evidence linkage,
-# exit-criteria verdict, hand-off rationale. Recognizes a small set of
-# graceful-exit phrases so a legitimately early hand-off is not penalized
-# for missing downstream elements. Composes with (never replaces) core
-# canon's generic record-fields-gate.sh.
+CORE_HOOKS="${CLAUDE_PLUGIN_ROOT_CORE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../core" && pwd -P)}/hooks"
+. "$CORE_HOOKS/lib/gate-lib.sh"
+gate_trap_fail_closed
+set -uo pipefail
+# PreToolUse gate (Write|Edit|MultiEdit|NotebookEdit|Bash) — performance-engineering
+# phase-2 record-norm, the 7 methodology.md (b) elements: methodology-cite,
+# repro info, workload-actual, percentile evidence, bottleneck-evidence
+# linkage, exit-criteria verdict, hand-off rationale. Recognizes a small
+# set of graceful-exit phrases so a legitimately early hand-off is not
+# penalized for missing downstream elements. Composes with (never
+# replaces) core canon's generic record-fields-gate.sh.
+#
+# Sources core's gate-lib.sh/gate-lib.py (issue-72 gate-house standard, by
+# reference) and this repo's own section_lib.py for section-scoped facet
+# checks against heading-vocabulary.md's shared phrase groups.
 #
 # Targets: docs/issue-<n>/reports/performance-engineering.md (this role's
 # phase-2 write surface). Phase-1 proposals are
 # performance-engineering-proposal-gate's job.
 #
 # Kill switch: export PERFORMANCE_ENGINEERING_RECORD_GATE_OFF=1
-set -uo pipefail
+# (unrecognized values stay ACTIVE — see gate_kill_switch_active).
+role="performance-engineering"
+gate_kill_switch_active "${PERFORMANCE_ENGINEERING_RECORD_GATE_OFF:-}" || { trap - EXIT; exit 0; }
 
-deny() { echo "performance-engineering-record-gate: refused — $1" >&2; exit 2; }
+command -v python3 >/dev/null 2>&1 || gate_deny "${role}-record-gate" "requires python3, which is not on PATH; denying rather than guessing."
 
-case "${PERFORMANCE_ENGINEERING_RECORD_GATE_OFF:-}" in
-  ""|0|false|no|off) ;;
-  *) exit 0 ;;
-esac
-
-command -v python3 >/dev/null 2>&1 || deny "record-gate.sh requires python3, which is not on PATH; denying rather than guessing."
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+SECTION_LIB_PY="$SELF_DIR/../../performance-engineering-order-check/hooks/section_lib.py"
+VOCAB_FILE="$SELF_DIR/../../performance-engineering-order-check/hooks/heading-vocabulary.md"
+[ -f "$SECTION_LIB_PY" ] || gate_deny "${role}-record-gate" "section_lib.py not found next to order-check.sh; cannot judge section-scoped facets."
+[ -f "$VOCAB_FILE" ] || gate_deny "${role}-record-gate" "heading-vocabulary.md not found; cannot judge section-scoped facets without the canonical phrase list."
 
 payload="$(cat 2>/dev/null || true)"
-[ -n "$payload" ] || deny "empty tool-use payload on stdin; cannot evaluate the record gate."
+[ -n "$payload" ] || gate_deny "${role}-record-gate" "empty tool-use payload on stdin; cannot evaluate the record gate."
 
 _target="$(printf '%s' "$payload" | python3 -c '
 import json,sys
 try: e=json.loads(sys.stdin.read())
 except Exception: sys.exit(0)
-ti=e.get("tool_input") if isinstance(e,dict) else None
-if isinstance(ti,dict):
+if not isinstance(e,dict): sys.exit(0)
+ti=e.get("tool_input")
+if not isinstance(ti,dict): sys.exit(0)
+if e.get("tool_name") in ("Write","Edit","MultiEdit","NotebookEdit"):
     v=ti.get("file_path")
     if isinstance(v,str) and v: print(v)
 ' 2>/dev/null || true)"
@@ -61,24 +70,24 @@ if [ -z "$root" ]; then
   root="$(git -C "$d" rev-parse --show-toplevel 2>/dev/null || true)"
 fi
 [ -z "$root" ] && root="$(git -C "$(pwd -P)" rev-parse --show-toplevel 2>/dev/null || true)"
-[ -z "$root" ] && deny "no project root could be determined; failing closed (record-gate cannot run)."
+[ -z "$root" ] && gate_deny "${role}-record-gate" "no project root could be determined; failing closed (record-gate cannot run)."
 
-PG_PAYLOAD="$payload" PG_ROOT="$root" \
+PG_PAYLOAD="$payload" PG_ROOT="$root" SECTION_LIB_PY="$SECTION_LIB_PY" VOCAB_FILE="$VOCAB_FILE" \
 python3 <<'PY'
 import sys as _fc_sys  # fail-closed-on-internal-error
 try:
-    import json, os, posixpath, re, sys
+    import json, os, posixpath, re, sys, importlib.util
 
     def deny(m):
         sys.stderr.write("performance-engineering-record-gate: refused — %s\n" % m); sys.exit(2)
 
+    _gspec = importlib.util.spec_from_file_location("gate_lib", os.environ["GATE_LIB_PY"])
+    gate_lib = importlib.util.module_from_spec(_gspec); _gspec.loader.exec_module(gate_lib)
+    _sspec = importlib.util.spec_from_file_location("section_lib", os.environ["SECTION_LIB_PY"])
+    section_lib = importlib.util.module_from_spec(_sspec); _sspec.loader.exec_module(section_lib)
+
     raw = os.environ.get("PG_PAYLOAD", "")
-    try:
-        ev = json.loads(raw) if raw else {}
-    except ValueError:
-        deny("the tool-call payload is not valid JSON; the gate cannot judge record elements on an unparseable write.")
-    if not isinstance(ev, dict):
-        deny("the tool-call payload is not a JSON object; failing closed on the record gate.")
+    ev = gate_lib.gate_parse_json_or_deny(raw, deny)
 
     tool = ev.get("tool_name")
     ti = ev.get("tool_input")
@@ -88,30 +97,36 @@ try:
     root = posixpath.normpath(os.environ["PG_ROOT"].replace("\\", "/"))
     RECORD_RE = re.compile(r'^docs/issue-[0-9]+/reports/performance-engineering\.md$')
 
-    def resolve(p):
-        n = p.replace("\\", "/")
-        a = n if posixpath.isabs(n) else posixpath.join(root, n)
-        a = posixpath.normpath(a)
-        try:
-            return posixpath.normpath(os.path.realpath(a).replace("\\", "/"))
-        except OSError:
-            return a
+    if tool == "Bash":
+        cmd = ti.get("command", "")
+        if not (isinstance(cmd, str) and cmd):
+            sys.exit(0)
+        hit = None
+        for tok in re.findall(r'[A-Za-z0-9_./~$-]+', cmd):
+            rel = gate_lib.gate_normalize_path(root, tok)
+            if rel is not None and RECORD_RE.match(rel):
+                hit = rel
+                break
+        if hit is None:
+            sys.exit(0)
+        deny(
+            "this Bash command appears to write to %s but the gate cannot determine "
+            "the resulting content from a shell command; failing closed the same way "
+            "an undeterminable Edit does. Use Write/Edit/MultiEdit so the 7 record "
+            "elements can be checked." % hit
+        )
 
-    path = None
-    if tool in ("Write", "Edit", "MultiEdit"):
-        p = ti.get("file_path")
-        if isinstance(p, str) and p:
-            path = p
-    if path is None:
+    if tool not in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
         sys.exit(0)
 
-    r = resolve(path)
-    if not r.startswith(root + "/"):
+    p = ti.get("file_path")
+    if not (isinstance(p, str) and p):
         sys.exit(0)
-    rel = r[len(root):].lstrip("/")
-    if not RECORD_RE.match(rel):
+    rel = gate_lib.gate_normalize_path(root, p)
+    if rel is None or not RECORD_RE.match(rel):
         sys.exit(0)  # not this role's record write surface — not this gate's business
 
+    r = posixpath.join(root, rel)
     current = None
     if os.path.isfile(r):
         try:
@@ -120,31 +135,8 @@ try:
         except OSError:
             deny("%s exists but cannot be read; failing closed." % rel)
 
-    new_text = None
-    if tool == "Write":
-        c = ti.get("content")
-        if isinstance(c, str):
-            new_text = c
-    elif tool == "Edit":
-        o, n = ti.get("old_string"), ti.get("new_string")
-        if isinstance(o, str) and isinstance(n, str) and current is not None and o in current:
-            new_text = current.replace(o, n, 1)
-    elif tool == "MultiEdit":
-        edits = ti.get("edits")
-        text = current
-        if isinstance(edits, list) and text is not None:
-            ok = True
-            for e in edits:
-                if not isinstance(e, dict):
-                    ok = False; break
-                o, n = e.get("old_string"), e.get("new_string")
-                if not isinstance(o, str) or not isinstance(n, str) or o not in text:
-                    ok = False; break
-                text = text.replace(o, n, 1)
-            if ok:
-                new_text = text
-
-    if new_text is None:
+    new_text, ok = gate_lib.gate_reconstruct_write(tool, ti, current)
+    if not ok:
         deny(
             "this write targets %s but the gate cannot determine the resulting content "
             "from the tool input (tool=%r). Write the full document with Write, or use an "
@@ -152,12 +144,18 @@ try:
             "checked." % (rel, tool)
         )
 
+    with open(os.environ["VOCAB_FILE"], encoding="utf-8-sig") as fh:
+        vocab = section_lib.load_vocab_groups(fh.read())
+
+    sections = section_lib.split_sections(new_text)
     low = new_text.lower()
 
     def has_any(*needles):
         return any(nd in low for nd in needles)
 
     # Graceful-exit: a legitimately early hand-off skips downstream elements.
+    # Whole-document check on purpose — a document-level early-exit signal,
+    # not a per-facet claim, so section-scoping it would be a regression.
     graceful_exit = has_any(
         "disproven at hypothesis stage",
         "routed to capacity-planning before reaching percentile evidence",
@@ -168,33 +166,50 @@ try:
 
     missing = []
 
-    # (b)1 methodology-cite: which method applied + per-signal measured values.
-    if not (has_any("use method", "red method", "golden signal") and re.search(r'\d', low)):
-        missing.append("methodology-cite: which of USE/RED/Golden-Signals was actually applied, with per-signal measured values (methodology.md (b)1)")
+    # (b)1 methodology-cite: which method applied + per-signal measured values,
+    # scoped to the method section (shared group with proposal-gate).
+    method_group = vocab.get("method", [])
+    cite_re = re.compile(r'\d')
+    if not (section_lib.section_has_any(sections, method_group, "use method", "red method", "golden signal")
+            and section_lib.section_search(sections, method_group, cite_re)):
+        missing.append("methodology-cite: which of USE/RED/Golden-Signals was actually applied, with per-signal measured values, inside the Method section (methodology.md (b)1)")
 
-    # (b)2 repro info: hardware/config/tool-version detail.
-    if not has_any("repro", "reproduc"):
-        missing.append("repro info: hardware/config/tool-version detail sufficient to reproduce the measurement (methodology.md (b)2)")
+    # (b)2 repro info: hardware/config/tool-version detail, scoped to the repro section.
+    repro_group = vocab.get("repro", [])
+    if not section_lib.section_has_any(sections, repro_group, "repro", "reproduc"):
+        missing.append("repro info: hardware/config/tool-version detail sufficient to reproduce the measurement, inside the Repro section (methodology.md (b)2)")
 
-    # (b)3 workload-actual: exercised workload vs phase-1 characterization.
-    if not (has_any("workload") and has_any("actual", "exercised")):
-        missing.append("workload-actual: the actually-exercised workload and its match/mismatch against the phase-1 characterization (methodology.md (b)3)")
+    # (b)3 workload-actual: exercised workload vs phase-1 characterization,
+    # scoped to the workload section.
+    workload_group = vocab.get("workload", [])
+    if not (section_lib.section_has_any(sections, workload_group, "workload")
+            and section_lib.section_has_any(sections, workload_group, "actual", "exercised")):
+        missing.append("workload-actual: the actually-exercised workload and its match/mismatch against the phase-1 characterization, inside the Workload section (methodology.md (b)3)")
 
-    # (b)4 percentile evidence: p50/p95/p99, not averages alone.
-    if not graceful_exit and not re.search(r'p9[0-9]|p50', low):
-        missing.append("percentile evidence (p50/p9x), not averages alone (methodology.md (b)4)")
+    # (b)4 percentile evidence: p50/p95/p99, not averages alone, scoped to the evidence section.
+    evidence_group = vocab.get("evidence", [])
+    pctl_re = re.compile(r'p9[0-9]|p50')
+    if not graceful_exit and not section_lib.section_search(sections, evidence_group, pctl_re):
+        missing.append("percentile evidence (p50/p9x), not averages alone, inside the Evidence section (methodology.md (b)4)")
 
-    # (b)5 bottleneck-evidence linkage.
-    if not graceful_exit and not (has_any("bottleneck") and has_any("evidence", "linked", "supports", "supported by")):
-        missing.append("bottleneck-evidence linkage: every bottleneck named must point at the specific measurement data supporting it (methodology.md (b)5)")
+    # (b)5 bottleneck-evidence linkage, scoped to the bottleneck section.
+    bottleneck_group = vocab.get("bottleneck", [])
+    if not graceful_exit and not (section_lib.section_has_any(sections, bottleneck_group, "bottleneck")
+                                    and section_lib.section_has_any(sections, bottleneck_group, "evidence", "linked", "supports", "supported by")):
+        missing.append("bottleneck-evidence linkage: every bottleneck named must point at the specific measurement data supporting it, inside the Bottleneck section (methodology.md (b)5)")
 
-    # (b)6 exit-criteria verdict: explicit pass/fail against phase-1 SLO.
-    if not graceful_exit and not (has_any("pass", "fail") and has_any("slo", "exit criteria", "exit-criteria")):
-        missing.append("exit-criteria verdict: explicit pass/fail against the phase-1 numeric SLO, with observed deviation (methodology.md (b)6)")
+    # (b)6 exit-criteria verdict: explicit pass/fail against phase-1 SLO,
+    # scoped to the exit-criteria section.
+    exit_group = vocab.get("exit-criteria", [])
+    if not graceful_exit and not (section_lib.section_has_any(sections, exit_group, "pass", "fail")
+                                    and section_lib.section_has_any(sections, exit_group, "slo", "exit criteria", "exit-criteria")):
+        missing.append("exit-criteria verdict: explicit pass/fail against the phase-1 numeric SLO, with observed deviation, inside the Exit-Criteria section (methodology.md (b)6)")
 
-    # (b)7 hand-off rationale.
-    if not graceful_exit and not (has_any("hand-off", "hand off", "handoff") and has_any("capacity-planning", "capacity planning", "no hand-off is needed", "no hand off is needed")):
-        missing.append("hand-off rationale: capacity-planning basis stated explicitly, or an explicit statement that no hand-off is needed and why (methodology.md (b)7)")
+    # (b)7 hand-off rationale, scoped to the handoff section.
+    handoff_group = vocab.get("handoff", [])
+    if not graceful_exit and not (section_lib.section_has_any(sections, handoff_group, "hand-off", "hand off", "handoff")
+                                    and section_lib.section_has_any(sections, handoff_group, "capacity-planning", "capacity planning", "no hand-off is needed", "no hand off is needed")):
+        missing.append("hand-off rationale: capacity-planning basis stated explicitly, or an explicit statement that no hand-off is needed and why, inside the Hand-off section (methodology.md (b)7)")
 
     if missing:
         deny(
@@ -203,8 +218,9 @@ try:
             "the applied methodology with measured values, state repro info, state the actual "
             "workload against the phase-1 characterization, show percentile evidence, link "
             "every bottleneck to its supporting evidence, render an explicit exit-criteria "
-            "verdict, and state its hand-off rationale — unless a recognized graceful-exit "
-            "phrase legitimately skips the downstream elements." % "; ".join(missing)
+            "verdict, and state its hand-off rationale — each inside the section whose "
+            "heading matches that facet's canonical group (heading-vocabulary.md) — unless a "
+            "recognized graceful-exit phrase legitimately skips the downstream elements." % "; ".join(missing)
         )
 
     sys.exit(0)
