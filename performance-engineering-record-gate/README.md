@@ -36,6 +36,30 @@ Edit/MultiEdit/Bash write, or an internal error all deny (exit 2). A
 denial names every missing element by name and cites the `methodology.md`
 subsection it traces to.
 
+### issue-19 spec-alignment: `roles/specs/performance-engineering.spec.json` fields
+
+Layered on top of the 7 elements above, none replaced:
+
+- `sli:` — a concrete monitored metric, non-placeholder wording, inside
+  the Evidence section (or a section headed with the `sli` vocabulary
+  group).
+- `error_budget_remaining:` — a stated remaining-budget value, inside a
+  new Error-Budget section. Presence-only: automated recomputation
+  enforcement is `TBD (follow-up)` at the spec level (issue-521), not
+  built here.
+- `verdict:` — exactly `within-budget` or `exhausted`, inside the
+  Exit-Criteria section, layered on top of (not replacing) the existing
+  pass/fail prose requirement.
+- frontmatter `loop_state:` — when present, must be exactly one of the
+  spec's five states (`landed`, `measuring`, `metric-unreachable`,
+  `reviewing`, `slo-undeclared`); any other value denies. A document-level
+  marker, not section-scoped.
+- `slo_target` — the spec's fourth required field maps onto this
+  rulebook's existing phase-1 `numeric SLO` facet
+  (`performance-engineering-proposal-gate`'s `slo` group); no separate
+  phase-2 gate check was added for it (see the issue-19 proposal's
+  Rationale).
+
 ## Composition
 
 Composes with, never replaces: `performance-engineering-order-check`
@@ -51,7 +75,10 @@ disables it).
 
 `tests/run-gate-tests.sh` — element-presence cases, a graceful-exit case,
 a section-scoped semantic case (correctly-worded percentile figure in the
-wrong section), and the gate-house six-case floor (replace_all
-Edit/MultiEdit, malformed JSON, kill-switch garbage value,
-absolute/`./`-prefixed path, Bash-write fail-closed). Run:
+wrong section), the issue-19 spec-field cases (missing `sli:`, missing
+`error_budget_remaining:`, invalid `verdict:` value, invalid
+`loop_state:` value, and a passing case per spec `loop_state` value), and
+the gate-house six-case floor (replace_all Edit/MultiEdit, malformed
+JSON, kill-switch garbage value, absolute/`./`-prefixed path, Bash-write
+fail-closed). Run:
 `CLAUDE_PLUGIN_ROOT_CORE=<core-checkout>/core bash performance-engineering-record-gate/tests/run-gate-tests.sh`

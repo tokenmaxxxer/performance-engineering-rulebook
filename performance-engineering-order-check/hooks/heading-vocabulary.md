@@ -13,7 +13,10 @@ order-check.sh only reads the `workload` and `evidence` groups (must
 precede/follow). proposal-gate.sh reads `slo`, `hypothesis`, `method`,
 `workload`, `premortem`, `citation`. record-gate.sh reads `method`
 (shared), `repro`, `workload`, `evidence`, `bottleneck`, `exit-criteria`,
-`handoff`.
+`handoff`, `sli`, `error-budget` (the latter two per issue-19's
+spec-alignment: `sli` is accepted alongside `evidence` as a heading for
+the `sli:` field; `error-budget` scopes the `error_budget_remaining:`
+field).
 
 ## "workload" group (must precede "evidence" group)
 - workload characterization
@@ -60,3 +63,13 @@ precede/follow). proposal-gate.sh reads `slo`, `hypothesis`, `method`,
 - hand-off
 - handoff
 - hand off
+
+## "sli" group
+- sli
+- service level indicator
+
+## "error-budget" group
+- error budget
+- error-budget
+- error-budget-remaining
+- error_budget_remaining

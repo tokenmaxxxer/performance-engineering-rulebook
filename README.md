@@ -6,8 +6,12 @@ generated as skeleton scaffolding by issue-170.
 
 - **decides**: 부하/지연 목표를 만족하는가
 - **use_when**: 성능 예산이 걸린 설계/회귀일 때
-- **produces**: performance budget, profiling evidence, bottleneck list
-- **write_scope**: []
+- **produces**: performance budget, profiling evidence, bottleneck list,
+  and (per `roles/specs/performance-engineering.spec.json`) the four
+  required phase-2 record fields `sli`, `slo_target`,
+  `error_budget_remaining`, `verdict`, with `loop_state` frontmatter drawn
+  from `landed`/`measuring`/`metric-unreachable`/`reviewing`/`slo-undeclared`
+- **write_scope**: `docs/issue-<n>/reports/performance-engineering.md`
 - **hand-off**: 용량 증설 타이밍이 걸리면 → capacity-planning
 
 ## Install
@@ -45,7 +49,13 @@ enforcement gates, and a plain checklist doc, one plugin directory each.
   workload-actual, percentile evidence, bottleneck-evidence linkage,
   exit-criteria verdict, hand-off rationale), same section-scoped
   checking, with a graceful-exit phrase set that legitimately skips the
-  downstream elements. Kill switch:
+  downstream elements. Also enforces (issue-19 spec-alignment) the
+  `roles/specs/performance-engineering.spec.json` required fields `sli`
+  (Evidence section) and `error_budget_remaining` (Error-Budget section),
+  a `verdict` enum (`within-budget`/`exhausted`, Exit-Criteria section),
+  and a frontmatter `loop_state` closed to the spec's five states
+  (`landed`, `measuring`, `metric-unreachable`, `reviewing`,
+  `slo-undeclared`). Kill switch:
   `PERFORMANCE_ENGINEERING_RECORD_GATE_OFF`.
 - `performance-engineering-order-check/hooks/order-check.sh` — PreToolUse
   gate firing on both write surfaces above: when both a workload-group and
