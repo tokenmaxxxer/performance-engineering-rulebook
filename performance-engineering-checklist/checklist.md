@@ -39,3 +39,22 @@ blocks a write; it only restates their normative source
 - [ ] **Hand-off rationale** — if capacity is the gating factor, state the
       hand-off basis to capacity-planning; if not, state that no hand-off
       is needed and why.
+
+## Phase-2 spec-required fields (`roles/specs/performance-engineering.spec.json`, issue-19)
+
+Layered on top of the seven methodology.md (b) elements above, none
+replaced:
+
+- [ ] **sli** — a concrete monitored metric (non-placeholder), inside the
+      Evidence section.
+- [ ] **slo_target** — the numeric SLO target this record measures
+      against; already carried by this rulebook's existing phase-1
+      numeric-SLO facet — restate it here for phase-2 traceability.
+- [ ] **error_budget_remaining** — the remaining error budget, inside an
+      Error-Budget section. Automated recomputation enforcement is `TBD
+      (follow-up)` at the spec level (issue-521); state the value, not a
+      placeholder.
+- [ ] **verdict** — exactly `within-budget` or `exhausted`, inside the
+      Exit-Criteria section.
+- [ ] **loop_state** — document frontmatter, exactly one of `landed`,
+      `measuring`, `metric-unreachable`, `reviewing`, `slo-undeclared`.

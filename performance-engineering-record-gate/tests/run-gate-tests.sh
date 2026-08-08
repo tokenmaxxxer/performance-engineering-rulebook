@@ -36,21 +36,30 @@ REC=docs/issue-10/reports/performance-engineering.md
 CITE='methodology-cite: applied USE method, saturation 92%, errors 0.2%'
 REPRO='repro info: c5.xlarge, tool version wrk 4.2'
 WORKLOAD='workload-actual: actually exercised workload matches phase-1 concurrency mix'
-PCTL='percentile evidence: p50 40ms, p95 180ms, p99 240ms'
+PCTL='percentile evidence: p50 40ms, p95 180ms, p99 240ms
+sli: p99 checkout latency'
 BOTTLENECK='bottleneck: connection pool, evidence linked to the percentile spike above'
-EXIT='exit-criteria verdict: pass against SLO, no deviation'
+EXIT='exit-criteria verdict: pass against SLO, no deviation
+verdict: within-budget'
 HANDOFF='hand-off: no hand-off is needed, no capacity constraint hit'
+ERRBUDGET='error_budget_remaining: 42%'
 
-full() { printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' \
-  "$CITE" "$REPRO" "$WORKLOAD" "$PCTL" "$BOTTLENECK" "$EXIT" "$HANDOFF"; }
+full() { printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Error-Budget\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' \
+  "$CITE" "$REPRO" "$WORKLOAD" "$PCTL" "$ERRBUDGET" "$BOTTLENECK" "$EXIT" "$HANDOFF"; }
 
-without_cite()       { printf '## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' "$REPRO" "$WORKLOAD" "$PCTL" "$BOTTLENECK" "$EXIT" "$HANDOFF"; }
-without_repro()      { printf '## Method\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' "$CITE" "$WORKLOAD" "$PCTL" "$BOTTLENECK" "$EXIT" "$HANDOFF"; }
-without_workload()   { printf '## Method\n%s\n## Repro\n%s\n## Percentile Evidence\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' "$CITE" "$REPRO" "$PCTL" "$BOTTLENECK" "$EXIT" "$HANDOFF"; }
-without_percentile() { printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' "$CITE" "$REPRO" "$WORKLOAD" "$BOTTLENECK" "$EXIT" "$HANDOFF"; }
-without_bottleneck() { printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' "$CITE" "$REPRO" "$WORKLOAD" "$PCTL" "$EXIT" "$HANDOFF"; }
-without_exit()       { printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Bottleneck\n%s\n## Hand-off\n%s\n' "$CITE" "$REPRO" "$WORKLOAD" "$PCTL" "$BOTTLENECK" "$HANDOFF"; }
-without_handoff()    { printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n' "$CITE" "$REPRO" "$WORKLOAD" "$PCTL" "$BOTTLENECK" "$EXIT"; }
+without_cite()       { printf '## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Error-Budget\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' "$REPRO" "$WORKLOAD" "$PCTL" "$ERRBUDGET" "$BOTTLENECK" "$EXIT" "$HANDOFF"; }
+without_repro()      { printf '## Method\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Error-Budget\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' "$CITE" "$WORKLOAD" "$PCTL" "$ERRBUDGET" "$BOTTLENECK" "$EXIT" "$HANDOFF"; }
+without_workload()   { printf '## Method\n%s\n## Repro\n%s\n## Percentile Evidence\n%s\n## Error-Budget\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' "$CITE" "$REPRO" "$PCTL" "$ERRBUDGET" "$BOTTLENECK" "$EXIT" "$HANDOFF"; }
+without_percentile() { printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\n## Error-Budget\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' "$CITE" "$REPRO" "$WORKLOAD" "$ERRBUDGET" "$BOTTLENECK" "$EXIT" "$HANDOFF"; }
+without_bottleneck() { printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Error-Budget\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' "$CITE" "$REPRO" "$WORKLOAD" "$PCTL" "$ERRBUDGET" "$EXIT" "$HANDOFF"; }
+without_exit()       { printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Error-Budget\n%s\n## Bottleneck\n%s\n## Hand-off\n%s\n' "$CITE" "$REPRO" "$WORKLOAD" "$PCTL" "$ERRBUDGET" "$BOTTLENECK" "$HANDOFF"; }
+without_handoff()    { printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Error-Budget\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n' "$CITE" "$REPRO" "$WORKLOAD" "$PCTL" "$ERRBUDGET" "$BOTTLENECK" "$EXIT"; }
+
+# --- issue-19 spec-alignment fixtures ---
+without_sli()          { printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\npercentile evidence: p50 40ms, p95 180ms, p99 240ms\n## Error-Budget\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' "$CITE" "$REPRO" "$WORKLOAD" "$ERRBUDGET" "$BOTTLENECK" "$EXIT" "$HANDOFF"; }
+without_error_budget() { printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\n%s\n## Hand-off\n%s\n' "$CITE" "$REPRO" "$WORKLOAD" "$PCTL" "$BOTTLENECK" "$EXIT" "$HANDOFF"; }
+invalid_verdict()      { printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\n## Percentile Evidence\n%s\n## Error-Budget\n%s\n## Bottleneck\n%s\n## Exit Criteria Verdict\nexit-criteria verdict: pass against SLO, no deviation\nverdict: mostly-fine\n## Hand-off\n%s\n' "$CITE" "$REPRO" "$WORKLOAD" "$PCTL" "$ERRBUDGET" "$BOTTLENECK" "$HANDOFF"; }
+with_loop_state()      { printf -- '---\nloop_state: %s\n---\n%s' "$1" "$(full)"; }
 
 run allow complete-compliant   "$REC" "$(full)"
 run deny  missing-cite         "$REC" "$(without_cite)"
@@ -62,6 +71,18 @@ run deny  missing-exit         "$REC" "$(without_exit)"
 run deny  missing-handoff      "$REC" "$(without_handoff)"
 run allow graceful-exit        "$REC" "$(printf '## Method\n%s\n## Repro\n%s\n## Workload Characterization\n%s\ndisproven at hypothesis stage\n' "$CITE" "$REPRO" "$WORKLOAD")"
 run allow foreign-path         "README.md" "x"
+
+# --- issue-19 spec-alignment cases ---
+
+run deny  missing-sli              "$REC" "$(without_sli)"
+run deny  missing-error-budget     "$REC" "$(without_error_budget)"
+run deny  invalid-verdict          "$REC" "$(invalid_verdict)"
+run allow loop-state-landed             "$REC" "$(with_loop_state landed)"
+run allow loop-state-measuring          "$REC" "$(with_loop_state measuring)"
+run allow loop-state-metric-unreachable "$REC" "$(with_loop_state metric-unreachable)"
+run allow loop-state-reviewing          "$REC" "$(with_loop_state reviewing)"
+run allow loop-state-slo-undeclared     "$REC" "$(with_loop_state slo-undeclared)"
+run deny  loop-state-invalid            "$REC" "$(with_loop_state bogus-state)"
 
 # --- issue-13 §2.2 semantic-check upgrade case ---
 

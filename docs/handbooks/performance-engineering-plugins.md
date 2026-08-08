@@ -55,6 +55,22 @@ facet's canonical group, instead of a whole-document substring search.
 | `performance-engineering-checklist` | Human-facing authoring checklist (no gate) | n/a — never blocks |
 | `performance-engineering-session-informer` | Non-blocking SessionStart informer | `PERFORMANCE_ENGINEERING_SESSION_INFORMER_OFF=1` |
 
+## issue-19 spec-alignment (`roles/specs/performance-engineering.spec.json`)
+
+`performance-engineering-record-gate/hooks/record-gate.sh` also enforces
+the marketplace spec's four required phase-2 record fields and its
+`loop_state` vocabulary, layered on the 7 methodology.md (b) elements
+above, none replaced: `sli:` and `error_budget_remaining:` (new
+`sli`/`error-budget` heading-vocabulary.md groups scope them to the
+Evidence and a new Error-Budget section respectively), `verdict:`
+(`within-budget`/`exhausted`, Exit-Criteria section), and frontmatter
+`loop_state:` closed to `landed`/`measuring`/`metric-unreachable`/
+`reviewing`/`slo-undeclared` (denies only when present-and-invalid).
+`slo_target` maps onto the existing phase-1 `numeric SLO` facet
+(`performance-engineering-proposal-gate`'s `slo` group) rather than a new
+phase-2 check — see `docs/issue-19/proposals/spec-alignment.md`'s
+Rationale. `run-gate-tests.sh` carries matching fixture cases.
+
 ## Running each plugin's gate tests
 
 ```

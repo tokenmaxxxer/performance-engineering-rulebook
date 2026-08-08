@@ -212,6 +212,61 @@ try:
                                     and section_lib.section_has_any(sections, handoff_group, "capacity-planning", "capacity planning", "no hand-off is needed", "no hand off is needed")):
         missing.append("hand-off rationale: capacity-planning basis stated explicitly, or an explicit statement that no hand-off is needed and why, inside the Hand-off section (methodology.md (b)7)")
 
+    # --- issue-19 spec-alignment: roles/specs/performance-engineering.spec.json
+    # required fields, layered on top of the (b)4/(b)6 elements above ---
+
+    # sli: a concrete monitored metric, scoped to the Evidence section (or
+    # a section headed with the "sli" group's own phrases). Non-placeholder
+    # check per the spec's "must resolve to an actual monitored metric"
+    # requirement — this repo has no monitoring system to resolve against,
+    # so textual presence + non-placeholder wording stands in.
+    sli_group = vocab.get("sli", [])
+    sli_scope = evidence_group + sli_group
+    sli_line_re = re.compile(r'sli:\s*([^\n]+)')
+    _placeholder_vals = {"tbd", "todo", "placeholder", "n/a", "na", "???"}
+
+    def _sli_present():
+        for _, _, _, body in section_lib.sections_matching_group(sections, sli_scope):
+            for m in sli_line_re.finditer(body.lower()):
+                val = m.group(1).strip()
+                if val and val not in _placeholder_vals:
+                    return True
+        return False
+
+    if not graceful_exit and not _sli_present():
+        missing.append("sli: naming a concrete monitored metric (non-placeholder), inside the Evidence section (spec-required field, roles/specs/performance-engineering.spec.json)")
+
+    # error_budget_remaining: scoped to a new Error-Budget section.
+    # Automated recomputation enforcement is TBD (follow-up) at the spec
+    # level (issue-521) — this is presence-only, matching that scope.
+    eb_group = vocab.get("error-budget", [])
+    eb_re = re.compile(r'error_budget_remaining:\s*\S+')
+    if not graceful_exit and not section_lib.section_search(sections, eb_group, eb_re):
+        missing.append("error_budget_remaining: a stated remaining-budget value, inside an Error-Budget section (spec-required field; automated recomputation enforcement is TBD follow-up per issue-521, presence-only here)")
+
+    # verdict: exact spec enum, scoped to the Exit-Criteria section,
+    # layered on top of (not replacing) the existing pass/fail prose check.
+    verdict_re = re.compile(r'verdict:\s*(within-budget|exhausted)\b')
+    if not graceful_exit and not section_lib.section_search(sections, exit_group, verdict_re):
+        missing.append("verdict: exactly `within-budget` or `exhausted`, inside the Exit-Criteria section (spec-required field, layered on top of the existing pass/fail prose requirement)")
+
+    # loop_state: frontmatter closed-set check, spec's five-state
+    # vocabulary exactly. Document-level marker (like implementation's
+    # loop_state:), not a per-section claim, so it is not section-scoped
+    # and is checked only when frontmatter is present.
+    _FM_RE = re.compile(r'\A---[ \t]*\n(.*?)\n---[ \t]*(?:\n|\Z)', re.DOTALL)
+    _fm_match = _FM_RE.match(new_text)
+    if _fm_match:
+        _ls_match = re.search(r'^loop_state:[ \t]*(\S+)[ \t]*$', _fm_match.group(1), re.MULTILINE)
+        if _ls_match:
+            _ls_val = _ls_match.group(1).strip()
+            _valid_loop_states = {"landed", "measuring", "metric-unreachable", "reviewing", "slo-undeclared"}
+            if _ls_val not in _valid_loop_states:
+                deny(
+                    "frontmatter loop_state: %r is not one of the spec's five states "
+                    "(landed, measuring, metric-unreachable, reviewing, slo-undeclared)." % _ls_val
+                )
+
     if missing:
         deny(
             "performance-engineering phase-2 record is missing required element(s): %s. "
