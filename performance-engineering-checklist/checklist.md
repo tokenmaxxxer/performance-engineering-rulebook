@@ -25,6 +25,11 @@ blocks a write; it only restates their normative source
 - [ ] **Premortem** — blast-radius limit, killswitch mechanism, and
       rollback procedure, written as if the regression has already
       happened.
+- [ ] **Profiling readiness** — before any profiling run is scheduled,
+      state that debug symbols/instrumentation are present and name the
+      specific scenario that justifies profiling now — a profiling run
+      with no stated scenario, or against unverified symbol availability,
+      is out of scope for this phase.
 
 ## Phase-2 authoring checklist (methodology.md (b))
 
@@ -47,6 +52,16 @@ blocks a write; it only restates their normative source
 - [ ] **Hand-off rationale** — if capacity is the gating factor, state the
       hand-off basis to capacity-planning; if not, state that no hand-off
       is needed and why.
+- [ ] **Revert-on-no-improvement gate** — the fix is verified against the
+      same benchmark methodology used for the baseline measurement; if the
+      after-measurement does not clear the improvement bar, the record
+      states plainly that the fix was reverted rather than kept on
+      unproven grounds.
+- [ ] **Statistical-significance claim** — an improvement claim between
+      before/after measurements states the test used to confirm the
+      difference isn't noise (e.g. a t-test) or the run-count/variance
+      basis backing that confirmation — a raw before/after delta alone
+      does not satisfy this item.
 
 ## Phase-2 spec-required fields (`roles/specs/performance-engineering.spec.json`, issue-19)
 
